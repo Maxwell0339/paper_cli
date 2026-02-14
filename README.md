@@ -1,8 +1,10 @@
 # PaperReader-CLI
 
-一个本地终端工具：递归扫描 PDF，调用 OpenAI 兼容接口进行学术总结，并输出 Markdown。
+个人使用AI编程的一个本地终端工具：递归扫描 PDF，调用LLM进行学术总结，并输出 Markdown。目前只支持OpenAI API
 
 ## 安装
+
+推荐使用虚拟环境：
 
 ```bash
 pip install -e .
