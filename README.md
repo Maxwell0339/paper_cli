@@ -10,7 +10,7 @@ pip install -e .
 
 ## 配置
 
-首次运行会自动创建系统级配置目录：`~/.paper_cli/config.yaml`
+首次运行 `paperreader scan ...` 时，如果不存在配置文件，会进入交互式引导并创建：`~/.paper_cli/config.yaml`
 
 编辑 `~/.paper_cli/config.yaml`：
 
@@ -46,6 +46,12 @@ paperreader scan ./papers --model deepseek-chat --base-url https://your-gateway/
 
 ```bash
 paperreader scan ./papers --config /path/to/custom-config.yaml
+```
+
+一键重新进入首次配置向导（覆盖现有配置）：
+
+```bash
+paperreader reconfigure
 ```
 
 查看命令帮助：

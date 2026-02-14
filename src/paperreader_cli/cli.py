@@ -6,7 +6,12 @@ import typer
 from rich.console import Console
 
 from .app import run_scan
-from .config import DEFAULT_SYSTEM_CONFIG_PATH, load_config
+from .config import (
+    DEFAULT_CONFIG_VALUES,
+    DEFAULT_SYSTEM_CONFIG_PATH,
+    load_config,
+    write_config,
+)
 
 app = typer.Typer(
     help="PaperReader-CLI: batch read and summarize PDFs.",
@@ -19,6 +24,33 @@ console = Console()
 def main() -> None:
     """PaperReader-CLI root command group."""
     return None
+
+
+def _bootstrap_config_interactive(config_path: Path) -> None:
+    console.print(f"[cyan]First-time setup:[/cyan] creating config at {config_path}")
+
+    base_url = typer.prompt("base_url", default=str(DEFAULT_CONFIG_VALUES["base_url"]))
+    api_key = typer.prompt("api_key", hide_input=True)
+    model = typer.prompt("model", default=str(DEFAULT_CONFIG_VALUES["model"]))
+    system_prompt = typer.prompt(
+        "system_prompt",
+        default=str(DEFAULT_CONFIG_VALUES["system_prompt"]),
+    )
+    max_chars = typer.prompt("max_chars", default=int(DEFAULT_CONFIG_VALUES["max_chars"]), type=int)
+    chunk_chars = typer.prompt("chunk_chars", default=int(DEFAULT_CONFIG_VALUES["chunk_chars"]), type=int)
+    recursive = typer.confirm("recursive scan?", default=bool(DEFAULT_CONFIG_VALUES["recursive"]))
+
+    values = {
+        "base_url": base_url,
+        "api_key": api_key,
+        "model": model,
+        "system_prompt": system_prompt,
+        "max_chars": max_chars,
+        "chunk_chars": chunk_chars,
+        "recursive": recursive,
+    }
+    write_config(config_path, values)
+    console.print("[green]Config saved.[/green]")
 
 
 @app.command()
@@ -36,6 +68,9 @@ def scan(
     """Scan a folder and summarize all PDF files."""
     try:
         target_config_path = config or DEFAULT_SYSTEM_CONFIG_PATH
+        if not target_config_path.exists():
+            _bootstrap_config_interactive(target_config_path)
+
         app_config = load_config(
             config_path=target_config_path,
             cli_base_url=base_url,
@@ -54,6 +89,19 @@ def scan(
     console.print(
         f"[bold green]Done.[/bold green] total={report.total}, success={report.success}, failed={report.failed}"
     )
+
+
+@app.command("reconfigure")
+def reconfigure(
+    config: Path | None = typer.Option(None, "--config", help="Optional custom config path; default is ~/.paper_cli/config.yaml."),
+) -> None:
+    """One-click: rerun interactive config wizard and overwrite existing config."""
+    try:
+        target_config_path = config or DEFAULT_SYSTEM_CONFIG_PATH
+        _bootstrap_config_interactive(target_config_path)
+    except Exception as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(code=1) from exc
 
 
 if __name__ == "__main__":

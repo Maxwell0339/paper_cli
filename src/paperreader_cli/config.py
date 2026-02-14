@@ -12,15 +12,15 @@ CONFIG_DIR_NAME = ".paper_cli"
 CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_SYSTEM_CONFIG_PATH = Path.home() / CONFIG_DIR_NAME / CONFIG_FILE_NAME
 
-DEFAULT_CONFIG_TEMPLATE = """base_url: \"https://api.openai.com/v1\"
-api_key: \"\"
-model: \"gpt-4o-mini\"
-system_prompt: |
-    你是一个计算机视觉领域的资深审稿人。请以严谨、清晰、可复现性导向的方式总结论文。
-max_chars: 120000
-chunk_chars: 12000
-recursive: true
-"""
+DEFAULT_CONFIG_VALUES: dict[str, Any] = {
+    "base_url": "https://api.openai.com/v1",
+    "api_key": "",
+    "model": "gpt-4o-mini",
+    "system_prompt": "你是一个计算机视觉领域的资深审稿人。请以严谨、清晰、可复现性导向的方式总结论文。",
+    "max_chars": 120000,
+    "chunk_chars": 12000,
+    "recursive": True,
+}
 
 
 @dataclass(slots=True)
@@ -47,14 +47,12 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
-def ensure_system_config(config_path: Path | None = None) -> Path:
-    resolved_path = config_path or DEFAULT_SYSTEM_CONFIG_PATH
-    resolved_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if not resolved_path.exists():
-        resolved_path.write_text(DEFAULT_CONFIG_TEMPLATE, encoding="utf-8")
-
-    return resolved_path
+def write_config(config_path: Path, values: dict[str, Any]) -> None:
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        yaml.safe_dump(values, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
 
 
 def load_config(
@@ -67,7 +65,7 @@ def load_config(
     cli_chunk_chars: int | None = None,
     cli_recursive: bool | None = None,
 ) -> AppConfig:
-    config_path = ensure_system_config(config_path)
+    config_path = config_path or DEFAULT_SYSTEM_CONFIG_PATH
     raw = _read_yaml(config_path)
 
     env_base_url = os.getenv("PAPERREADER_BASE_URL")
