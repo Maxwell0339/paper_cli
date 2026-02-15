@@ -9,7 +9,7 @@ from .app import run_scan
 from .config import (
     DEFAULT_CONFIG_VALUES,
     DEFAULT_SYSTEM_CONFIG_PATH,
-    PROVIDER_PRESETS,
+    PROVIDER_OTHERS,
     SUPPORTED_PROVIDERS,
     load_config,
     provider_preset,
@@ -39,13 +39,19 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
     if provider_index < 1 or provider_index > len(SUPPORTED_PROVIDERS):
         provider_index = 1
     provider = SUPPORTED_PROVIDERS[provider_index - 1]
+    provider_name = ""
+    if provider == PROVIDER_OTHERS:
+        provider_name = typer.prompt("provider_name (manual)").strip()
+        if not provider_name:
+            raise typer.BadParameter("provider_name is required when provider=others")
+
     preset = provider_preset(provider)
 
     base_url = typer.prompt("base_url", default=str(preset["base_url"] or DEFAULT_CONFIG_VALUES["base_url"]))
     console.print(
         f"[dim]Tip: You can also set API key via env {preset['api_key_env']} or PAPERREADER_API_KEY[/dim]"
     )
-    api_key = typer.prompt("api_key", hide_input=True)
+    api_key = typer.prompt("api_key", hide_input=False)
     model = typer.prompt("model", default=str(preset["model"] or DEFAULT_CONFIG_VALUES["model"]))
     system_prompt = typer.prompt(
         "system_prompt",
@@ -57,6 +63,7 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
 
     values = {
         "provider": provider,
+        "provider_name": provider_name,
         "base_url": base_url,
         "api_key": api_key,
         "model": model,

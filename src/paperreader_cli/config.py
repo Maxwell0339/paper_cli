@@ -16,14 +16,14 @@ PROVIDER_OPENAI = "openai"
 PROVIDER_CLAUDE = "claude"
 PROVIDER_GEMINI = "gemini"
 PROVIDER_DEEPSEEK = "deepseek"
-PROVIDER_THIRD_PARTY = "third_party"
+PROVIDER_OTHERS = "others"
 
 SUPPORTED_PROVIDERS = [
     PROVIDER_OPENAI,
     PROVIDER_CLAUDE,
     PROVIDER_GEMINI,
     PROVIDER_DEEPSEEK,
-    PROVIDER_THIRD_PARTY,
+    PROVIDER_OTHERS,
 ]
 
 PROVIDER_PRESETS: dict[str, dict[str, str]] = {
@@ -47,15 +47,16 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
         "model": "deepseek-chat",
         "api_key_env": "PAPERREADER_DEEPSEEK_API_KEY",
     },
-    PROVIDER_THIRD_PARTY: {
+    PROVIDER_OTHERS: {
         "base_url": "",
         "model": "",
-        "api_key_env": "PAPERREADER_THIRD_PARTY_API_KEY",
+        "api_key_env": "PAPERREADER_OTHERS_API_KEY",
     },
 }
 
 DEFAULT_CONFIG_VALUES: dict[str, Any] = {
     "provider": PROVIDER_OPENAI,
+    "provider_name": "",
     "base_url": "https://api.openai.com/v1",
     "api_key": "",
     "model": "gpt-5",
@@ -69,6 +70,7 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
 @dataclass(slots=True)
 class AppConfig:
     provider: str
+    provider_name: str
     base_url: str
     api_key: str
     model: str
@@ -101,6 +103,8 @@ def write_config(config_path: Path, values: dict[str, Any]) -> None:
 
 def provider_preset(provider: str) -> dict[str, str]:
     normalized = provider.strip().lower()
+    if normalized == "third_party":
+        normalized = PROVIDER_OTHERS
     if normalized not in PROVIDER_PRESETS:
         normalized = PROVIDER_OPENAI
     return PROVIDER_PRESETS[normalized]
@@ -120,8 +124,12 @@ def load_config(
     raw = _read_yaml(config_path)
 
     provider = str(raw.get("provider") or DEFAULT_CONFIG_VALUES["provider"]).strip().lower()
+    if provider == "third_party":
+        provider = PROVIDER_OTHERS
     if provider not in SUPPORTED_PROVIDERS:
         provider = PROVIDER_OPENAI
+
+    provider_name = str(raw.get("provider_name") or "").strip()
 
     preset = provider_preset(provider)
     provider_key_env_name = preset["api_key_env"]
@@ -129,6 +137,8 @@ def load_config(
     env_base_url = os.getenv("PAPERREADER_BASE_URL")
     env_api_key = os.getenv("PAPERREADER_API_KEY")
     env_provider_api_key = os.getenv(provider_key_env_name)
+    if provider == PROVIDER_OTHERS and not env_provider_api_key:
+        env_provider_api_key = os.getenv("PAPERREADER_THIRD_PARTY_API_KEY")
     env_model = os.getenv("PAPERREADER_MODEL")
     env_system_prompt = os.getenv("PAPERREADER_SYSTEM_PROMPT")
 
@@ -148,6 +158,7 @@ def load_config(
 
     return AppConfig(
         provider=provider,
+        provider_name=provider_name,
         base_url=str(base_url).rstrip("/"),
         api_key=str(api_key),
         model=str(model),
