@@ -1,11 +1,14 @@
 # PaperReader-CLI
 
-个人使用AI编程的一个本地终端工具：递归扫描 PDF，调用LLM进行学术总结，并输出 Markdown。目前只支持OpenAI API
+个人使用AI编程的一个本地终端工具：递归扫描 PDF，调用LLM进行学术总结，并输出 Markdown。支持多 provider 配置（OpenAI、Claude、Gemini、DeepSeek、third_party）。
 
 ## 安装
 
 推荐使用虚拟环境：
 
+```bash
+git clone https://github.com/Maxwell0339/paper_cli.git
+```
 ```bash
 pip install -e .
 ```
@@ -16,6 +19,7 @@ pip install -e .
 
 编辑 `~/.paper_cli/config.yaml`：
 
+- `provider`: 模型供应商（`openai` / `claude` / `gemini` / `deepseek` / `third_party`）
 - `base_url`: OpenAI 或 OneAPI/NewAPI 地址
 - `api_key`: API 密钥（也可用环境变量 `PAPERREADER_API_KEY`）
 - `model`: 模型名（如 `gpt-4o` / `deepseek-chat`）
@@ -31,6 +35,19 @@ pip install -e .
 - `PAPERREADER_API_KEY`
 - `PAPERREADER_MODEL`
 - `PAPERREADER_SYSTEM_PROMPT`
+- `PAPERREADER_OPENAI_API_KEY`
+- `PAPERREADER_CLAUDE_API_KEY`
+- `PAPERREADER_GEMINI_API_KEY`
+- `PAPERREADER_DEEPSEEK_API_KEY`
+- `PAPERREADER_THIRD_PARTY_API_KEY`
+
+provider 预设（首次向导自动带出默认值）：
+
+- `openai`: `https://api.openai.com/v1`, `gpt-4o-mini`
+- `deepseek`: `https://api.deepseek.com/v1`, `deepseek-chat`
+- `claude`: `https://openrouter.ai/api/v1`, `anthropic/claude-3.5-sonnet`
+- `gemini`: `https://openrouter.ai/api/v1`, `google/gemini-2.0-flash-001`
+- `third_party`: 由你自定义 `base_url` 与 `model`
 
 ## 使用
 

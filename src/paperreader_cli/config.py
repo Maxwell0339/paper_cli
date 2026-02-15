@@ -12,7 +12,50 @@ CONFIG_DIR_NAME = ".paper_cli"
 CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_SYSTEM_CONFIG_PATH = Path.home() / CONFIG_DIR_NAME / CONFIG_FILE_NAME
 
+PROVIDER_OPENAI = "openai"
+PROVIDER_CLAUDE = "claude"
+PROVIDER_GEMINI = "gemini"
+PROVIDER_DEEPSEEK = "deepseek"
+PROVIDER_THIRD_PARTY = "third_party"
+
+SUPPORTED_PROVIDERS = [
+    PROVIDER_OPENAI,
+    PROVIDER_CLAUDE,
+    PROVIDER_GEMINI,
+    PROVIDER_DEEPSEEK,
+    PROVIDER_THIRD_PARTY,
+]
+
+PROVIDER_PRESETS: dict[str, dict[str, str]] = {
+    PROVIDER_OPENAI: {
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "api_key_env": "PAPERREADER_OPENAI_API_KEY",
+    },
+    PROVIDER_CLAUDE: {
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "anthropic/claude-3.5-sonnet",
+        "api_key_env": "PAPERREADER_CLAUDE_API_KEY",
+    },
+    PROVIDER_GEMINI: {
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "google/gemini-2.0-flash-001",
+        "api_key_env": "PAPERREADER_GEMINI_API_KEY",
+    },
+    PROVIDER_DEEPSEEK: {
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "api_key_env": "PAPERREADER_DEEPSEEK_API_KEY",
+    },
+    PROVIDER_THIRD_PARTY: {
+        "base_url": "",
+        "model": "",
+        "api_key_env": "PAPERREADER_THIRD_PARTY_API_KEY",
+    },
+}
+
 DEFAULT_CONFIG_VALUES: dict[str, Any] = {
+    "provider": PROVIDER_OPENAI,
     "base_url": "https://api.openai.com/v1",
     "api_key": "",
     "model": "gpt-4o-mini",
@@ -25,6 +68,7 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
 
 @dataclass(slots=True)
 class AppConfig:
+    provider: str
     base_url: str
     api_key: str
     model: str
@@ -55,6 +99,13 @@ def write_config(config_path: Path, values: dict[str, Any]) -> None:
     )
 
 
+def provider_preset(provider: str) -> dict[str, str]:
+    normalized = provider.strip().lower()
+    if normalized not in PROVIDER_PRESETS:
+        normalized = PROVIDER_OPENAI
+    return PROVIDER_PRESETS[normalized]
+
+
 def load_config(
     config_path: Path | None = None,
     cli_base_url: str | None = None,
@@ -68,14 +119,22 @@ def load_config(
     config_path = config_path or DEFAULT_SYSTEM_CONFIG_PATH
     raw = _read_yaml(config_path)
 
+    provider = str(raw.get("provider") or DEFAULT_CONFIG_VALUES["provider"]).strip().lower()
+    if provider not in SUPPORTED_PROVIDERS:
+        provider = PROVIDER_OPENAI
+
+    preset = provider_preset(provider)
+    provider_key_env_name = preset["api_key_env"]
+
     env_base_url = os.getenv("PAPERREADER_BASE_URL")
     env_api_key = os.getenv("PAPERREADER_API_KEY")
+    env_provider_api_key = os.getenv(provider_key_env_name)
     env_model = os.getenv("PAPERREADER_MODEL")
     env_system_prompt = os.getenv("PAPERREADER_SYSTEM_PROMPT")
 
-    base_url = cli_base_url or env_base_url or raw.get("base_url") or "https://api.openai.com/v1"
-    api_key = cli_api_key or env_api_key or raw.get("api_key") or ""
-    model = cli_model or env_model or raw.get("model") or "gpt-4o-mini"
+    base_url = cli_base_url or env_base_url or raw.get("base_url") or preset["base_url"]
+    api_key = cli_api_key or env_api_key or env_provider_api_key or raw.get("api_key") or ""
+    model = cli_model or env_model or raw.get("model") or preset["model"]
     system_prompt = (
         cli_system_prompt
         or env_system_prompt
@@ -88,6 +147,7 @@ def load_config(
     recursive = cli_recursive if cli_recursive is not None else bool(raw.get("recursive", True))
 
     return AppConfig(
+        provider=provider,
         base_url=str(base_url).rstrip("/"),
         api_key=str(api_key),
         model=str(model),
