@@ -9,7 +9,10 @@ from .app import run_scan
 from .config import (
     DEFAULT_CONFIG_VALUES,
     DEFAULT_SYSTEM_CONFIG_PATH,
+    PROVIDER_PRESETS,
+    SUPPORTED_PROVIDERS,
     load_config,
+    provider_preset,
     write_config,
 )
 
@@ -29,9 +32,21 @@ def main() -> None:
 def _bootstrap_config_interactive(config_path: Path) -> None:
     console.print(f"[cyan]First-time setup:[/cyan] creating config at {config_path}")
 
-    base_url = typer.prompt("base_url", default=str(DEFAULT_CONFIG_VALUES["base_url"]))
+    console.print("[bold]Select provider:[/bold]")
+    for idx, name in enumerate(SUPPORTED_PROVIDERS, start=1):
+        console.print(f"  {idx}. {name}")
+    provider_index = typer.prompt("provider index", default=1, type=int)
+    if provider_index < 1 or provider_index > len(SUPPORTED_PROVIDERS):
+        provider_index = 1
+    provider = SUPPORTED_PROVIDERS[provider_index - 1]
+    preset = provider_preset(provider)
+
+    base_url = typer.prompt("base_url", default=str(preset["base_url"] or DEFAULT_CONFIG_VALUES["base_url"]))
+    console.print(
+        f"[dim]Tip: You can also set API key via env {preset['api_key_env']} or PAPERREADER_API_KEY[/dim]"
+    )
     api_key = typer.prompt("api_key", hide_input=True)
-    model = typer.prompt("model", default=str(DEFAULT_CONFIG_VALUES["model"]))
+    model = typer.prompt("model", default=str(preset["model"] or DEFAULT_CONFIG_VALUES["model"]))
     system_prompt = typer.prompt(
         "system_prompt",
         default=str(DEFAULT_CONFIG_VALUES["system_prompt"]),
@@ -41,6 +56,7 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
     recursive = typer.confirm("recursive scan?", default=bool(DEFAULT_CONFIG_VALUES["recursive"]))
 
     values = {
+        "provider": provider,
         "base_url": base_url,
         "api_key": api_key,
         "model": model,
