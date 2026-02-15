@@ -29,17 +29,17 @@ SUPPORTED_PROVIDERS = [
 PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     PROVIDER_OPENAI: {
         "base_url": "https://api.openai.com/v1",
-        "model": "gpt-4o-mini",
+        "model": "gpt-5",
         "api_key_env": "PAPERREADER_OPENAI_API_KEY",
     },
     PROVIDER_CLAUDE: {
-        "base_url": "https://openrouter.ai/api/v1",
-        "model": "anthropic/claude-3.5-sonnet",
+        "base_url": "https://api.anthropic.com/v1/",
+        "model": "claude-opus-4-6",
         "api_key_env": "PAPERREADER_CLAUDE_API_KEY",
     },
     PROVIDER_GEMINI: {
-        "base_url": "https://openrouter.ai/api/v1",
-        "model": "google/gemini-2.0-flash-001",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "model": "gemini-3-flash-preview",
         "api_key_env": "PAPERREADER_GEMINI_API_KEY",
     },
     PROVIDER_DEEPSEEK: {
@@ -58,8 +58,8 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
     "provider": PROVIDER_OPENAI,
     "base_url": "https://api.openai.com/v1",
     "api_key": "",
-    "model": "gpt-4o-mini",
-    "system_prompt": "你是一个计算机视觉领域的资深审稿人。请以严谨、清晰、可复现性导向的方式总结论文。",
+    "model": "gpt-5",
+    "system_prompt": "你是一个机器人，无人机领域的资深审稿人，精通的方向是视觉SLAM。请以严谨、清晰、可复现性导向的方式总结论文。",
     "max_chars": 120000,
     "chunk_chars": 12000,
     "recursive": True,
