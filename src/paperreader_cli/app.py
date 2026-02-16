@@ -11,7 +11,7 @@ from .pdf_loader import PDFLoader
 from .renderer import render_summary_saved
 from .scanner import find_pdfs
 from .summarizer import summarize_paper
-from .writer import write_markdown_next_to_pdf
+from .writer import write_markdown_for_pdf
 
 
 @dataclass(slots=True)
@@ -22,7 +22,7 @@ class ProcessReport:
     total_tokens: int
 
 
-def run_scan(folder: Path, config: AppConfig, console: Console) -> ProcessReport:
+def run_scan(folder: Path, config: AppConfig, console: Console, summary_output_dir: Path) -> ProcessReport:
     pdfs = find_pdfs(folder, recursive=config.recursive)
     if not pdfs:
         console.print(f"[yellow]No PDF files found in {folder}[/yellow]")
@@ -48,7 +48,7 @@ def run_scan(folder: Path, config: AppConfig, console: Console) -> ProcessReport
                     paper_text=text,
                     chunk_chars=config.chunk_chars,
                 )
-                output_path = write_markdown_next_to_pdf(pdf, summary.content)
+                output_path = write_markdown_for_pdf(pdf, summary.content, summary_output_dir)
             except (ValueError, LLMClientError) as exc:
                 failed += 1
                 console.print(f"[red]Failed:[/red] {pdf} -> {exc}")

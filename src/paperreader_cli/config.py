@@ -12,6 +12,8 @@ CONFIG_DIR_NAME = ".paper_cli"
 CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_SYSTEM_CONFIG_PATH = Path.home() / CONFIG_DIR_NAME / CONFIG_FILE_NAME
 DEFAULT_CRAWL_OUTPUT_DIR = Path.home() / CONFIG_DIR_NAME / "papers"
+DEFAULT_SCAN_FOLDER = Path.home() / CONFIG_DIR_NAME / "papers"
+DEFAULT_SUMMARY_OUTPUT_DIR = Path.home() / CONFIG_DIR_NAME / "summary"
 
 PROVIDER_OPENAI = "openai"
 PROVIDER_CLAUDE = "claude"
@@ -67,6 +69,8 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
     "recursive": True,
     "last_crawl_query": "",
     "default_crawl_output_dir": str(DEFAULT_CRAWL_OUTPUT_DIR),
+    "default_scan_folder": str(DEFAULT_SCAN_FOLDER),
+    "default_summary_output_dir": str(DEFAULT_SUMMARY_OUTPUT_DIR),
 }
 
 
@@ -83,6 +87,8 @@ class AppConfig:
     recursive: bool = True
     last_crawl_query: str = ""
     default_crawl_output_dir: str = str(DEFAULT_CRAWL_OUTPUT_DIR)
+    default_scan_folder: str = str(DEFAULT_SCAN_FOLDER)
+    default_summary_output_dir: str = str(DEFAULT_SUMMARY_OUTPUT_DIR)
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -179,6 +185,8 @@ def load_config(
     recursive = cli_recursive if cli_recursive is not None else bool(raw.get("recursive", True))
     last_crawl_query = str(raw.get("last_crawl_query") or "").strip()
     default_crawl_output_dir = str(raw.get("default_crawl_output_dir") or str(DEFAULT_CRAWL_OUTPUT_DIR)).strip()
+    default_scan_folder = str(raw.get("default_scan_folder") or str(DEFAULT_SCAN_FOLDER)).strip()
+    default_summary_output_dir = str(raw.get("default_summary_output_dir") or str(DEFAULT_SUMMARY_OUTPUT_DIR)).strip()
 
     return AppConfig(
         provider=provider,
@@ -192,4 +200,6 @@ def load_config(
         recursive=bool(recursive),
         last_crawl_query=last_crawl_query,
         default_crawl_output_dir=default_crawl_output_dir,
+        default_scan_folder=default_scan_folder,
+        default_summary_output_dir=default_summary_output_dir,
     )

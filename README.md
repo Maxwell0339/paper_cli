@@ -27,6 +27,8 @@ pip install -e .
 - `system_prompt`: 学术人设
 - `max_chars`: 单篇论文最大输入长度（超出将截断并提示）
 - `chunk_chars`: 长文本分块大小（分块总结再汇总）
+- `default_scan_folder`: 论文目录默认路径（`scan` 默认扫描目录、`crawl` 默认保存目录；默认 `~/.paper_cli/papers`）
+- `default_summary_output_dir`: `scan` 默认总结输出目录（默认 `~/.paper_cli/summary`）
 
 配置优先级：`CLI 参数 > 环境变量 > ~/.paper_cli/config.yaml`
 
@@ -56,7 +58,19 @@ provider 预设（首次向导自动带出默认值）：
 paperreader scan ./papers
 ```
 
-按关键词从 ArXiv 抓取论文 PDF（默认保存到 `~/.paper_cli/papers`）：
+不传文件夹路径时，`scan` 默认读取 `~/.paper_cli/papers`：
+
+```bash
+paperreader scan
+```
+
+`scan` 生成的总结 Markdown 默认保存到 `~/.paper_cli/summary`，可用 `--output-dir` 自定义：
+
+```bash
+paperreader scan --output-dir ./summary
+```
+
+按关键词从 ArXiv 抓取论文 PDF（默认保存到 `default_scan_folder`，初始为 `~/.paper_cli/papers`）：
 
 ```bash
 paperreader crawl --query "visual slam" --max-results 20
