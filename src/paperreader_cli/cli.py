@@ -65,6 +65,13 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
     max_chars = typer.prompt("max_chars", default=int(DEFAULT_CONFIG_VALUES["max_chars"]), type=int)
     chunk_chars = typer.prompt("chunk_chars", default=int(DEFAULT_CONFIG_VALUES["chunk_chars"]), type=int)
     recursive = typer.confirm("recursive scan?", default=bool(DEFAULT_CONFIG_VALUES["recursive"]))
+    file_workers = typer.prompt("file_workers", default=int(DEFAULT_CONFIG_VALUES["file_workers"]), type=int)
+    chunk_workers = typer.prompt("chunk_workers", default=int(DEFAULT_CONFIG_VALUES["chunk_workers"]), type=int)
+    request_timeout = typer.prompt("request_timeout", default=int(DEFAULT_CONFIG_VALUES["request_timeout"]), type=int)
+    max_retries = typer.prompt("max_retries", default=int(DEFAULT_CONFIG_VALUES["max_retries"]), type=int)
+    rate_limit_qps = typer.prompt("rate_limit_qps", default=float(DEFAULT_CONFIG_VALUES["rate_limit_qps"]), type=float)
+    cache_enabled = typer.confirm("enable cache?", default=bool(DEFAULT_CONFIG_VALUES["cache_enabled"]))
+    profile = typer.prompt("profile (paper/report)", default=str(DEFAULT_CONFIG_VALUES["profile"]))
     default_scan_folder = typer.prompt("default_scan_folder", default=str(DEFAULT_SCAN_FOLDER))
     default_summary_output_dir = typer.prompt("default_summary_output_dir", default=str(DEFAULT_SUMMARY_OUTPUT_DIR))
 
@@ -78,6 +85,13 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
         "max_chars": max_chars,
         "chunk_chars": chunk_chars,
         "recursive": recursive,
+        "file_workers": file_workers,
+        "chunk_workers": chunk_workers,
+        "request_timeout": request_timeout,
+        "max_retries": max_retries,
+        "rate_limit_qps": rate_limit_qps,
+        "cache_enabled": cache_enabled,
+        "profile": profile,
         "default_scan_folder": default_scan_folder,
         "default_summary_output_dir": default_summary_output_dir,
     }
@@ -97,6 +111,13 @@ def scan(
     max_chars: int | None = typer.Option(None, "--max-chars", help="Max chars per PDF before truncation."),
     chunk_chars: int | None = typer.Option(None, "--chunk-chars", help="Chunk size for long-context summarization."),
     recursive: bool | None = typer.Option(None, "--recursive/--no-recursive", help="Recursive scan switch."),
+    file_workers: int | None = typer.Option(None, "--file-workers", min=1, help="Max concurrent PDF files being summarized."),
+    chunk_workers: int | None = typer.Option(None, "--chunk-workers", min=1, help="Max concurrent chunks for one long PDF."),
+    request_timeout: int | None = typer.Option(None, "--request-timeout", min=10, help="Per-request timeout in seconds."),
+    max_retries: int | None = typer.Option(None, "--max-retries", min=0, help="Retry times for transient LLM errors."),
+    rate_limit_qps: float | None = typer.Option(None, "--rate-limit-qps", min=0.1, help="Client-side max LLM requests per second."),
+    cache_enabled: bool | None = typer.Option(None, "--cache/--no-cache", help="Enable summary cache by PDF hash + config fingerprint."),
+    profile: str | None = typer.Option(None, "--profile", help="Summarization profile: paper or report."),
 ) -> None:
     """Scan a folder and summarize all PDF files."""
     try:
@@ -113,6 +134,13 @@ def scan(
             cli_max_chars=max_chars,
             cli_chunk_chars=chunk_chars,
             cli_recursive=recursive,
+            cli_file_workers=file_workers,
+            cli_chunk_workers=chunk_workers,
+            cli_request_timeout=request_timeout,
+            cli_max_retries=max_retries,
+            cli_rate_limit_qps=rate_limit_qps,
+            cli_cache_enabled=cache_enabled,
+            cli_profile=profile,
         )
         final_folder = (folder_path or Path(app_config.default_scan_folder)).expanduser().resolve()
         final_output_dir = (output_dir or Path(app_config.default_summary_output_dir)).expanduser().resolve()
