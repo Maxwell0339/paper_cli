@@ -15,7 +15,7 @@ pip install -e .
 
 ## 配置
 
-首次运行 `paperreader scan ...` 时，如果不存在配置文件，会进入交互式引导并创建：`~/.paper_cli/config.yaml`
+首次运行 `paperreader scan` 时，如果不存在配置文件，会进入交互式引导并创建：`~/.paper_cli/config.yaml`
 
 编辑 `~/.paper_cli/config.yaml`：
 
@@ -46,14 +46,15 @@ pip install -e .
 
 provider 预设（首次向导自动带出默认值）：
 
-- `openai`: `https://api.openai.com/v1`, `gpt-4o-mini`
+- `openai`: `https://api.openai.com/v1`, `gpt-5`
 - `deepseek`: `https://api.deepseek.com/v1`, `deepseek-chat`
-- `claude`: `https://openrouter.ai/api/v1`, `anthropic/claude-3.5-sonnet`
-- `gemini`: `https://openrouter.ai/api/v1`, `google/gemini-2.0-flash-001`
+- `claude`: `https://api.anthropic.com/v1/`, `claude-opus-4-6`
+- `gemini`: `https://generativelanguage.googleapis.com/v1beta/openai/`, `gemini-3-flash-preview`
 - `others`: 由你自定义 `provider_name`、`base_url` 与 `model`
 
 ## 使用
 
+1. 读取文件夹中的PDF并生成总结：
 ```bash
 paperreader scan ./papers
 ```
@@ -63,28 +64,13 @@ paperreader scan ./papers
 ```bash
 paperreader scan
 ```
-
-`scan` 生成的总结 Markdown 默认保存到 `~/.paper_cli/summary`，可用 `--output-dir` 自定义：
+2. `scan` 生成的总结 Markdown 默认保存到 `~/.paper_cli/summary`，可用 `--output-dir` 自定义：
 
 ```bash
 paperreader scan --output-dir ./summary
 ```
 
-按关键词从 ArXiv 抓取论文 PDF（默认保存到 `default_scan_folder`，初始为 `~/.paper_cli/papers`）：
-
-```bash
-paperreader crawl --query "visual slam" --max-results 20
-```
-
-自定义保存目录：
-
-```bash
-paperreader crawl --query "vins mono" --output-dir ./papers
-```
-
-未传 `--query` 时会回退到上次 crawl 使用的关键词；若历史关键词为空则报错。
-
-可选覆盖参数：
+3. 可选覆盖参数：
 
 ```bash
 paperreader scan ./papers --model deepseek-chat --base-url https://your-gateway/v1
@@ -101,8 +87,22 @@ paperreader scan ./papers --config /path/to/custom-config.yaml
 ```bash
 paperreader reconfigure
 ```
+4. 论文搜索：
+按关键词从 ArXiv 抓取论文 PDF（默认保存到 `default_scan_folder`，初始为 `~/.paper_cli/papers`）：
 
-查看命令帮助：
+```bash
+paperreader crawl --query "visual slam" --max-results 20
+```
+
+自定义保存目录：
+
+```bash
+paperreader crawl --query "vins mono" --output-dir ./papers
+```
+
+未传 `--query` 时会回退到上次 crawl 使用的关键词；若历史关键词为空则报错。
+
+5. 查看命令帮助：
 
 ```bash
 paperreader scan --help
