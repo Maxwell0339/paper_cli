@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from io import StringIO
 from pathlib import Path
 import re
 
@@ -16,14 +17,19 @@ class PDFLoader:
         except Exception as exc:
             raise ValueError(f"Failed to open PDF: {pdf_path}") from exc
 
-        pages: list[str] = []
+        buffer = StringIO()
         try:
             for page in doc:
-                pages.append(page.get_text("text"))
+                page_text = page.get_text("text")
+                if not page_text:
+                    continue
+                if buffer.tell() > 0:
+                    buffer.write("\n")
+                buffer.write(page_text)
         finally:
             doc.close()
 
-        merged = "\n".join(pages)
+        merged = buffer.getvalue()
         cleaned = self._clean_text(merged)
         truncated = len(cleaned) > self.max_chars
         if truncated:

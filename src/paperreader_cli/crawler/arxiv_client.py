@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
@@ -15,6 +16,10 @@ class ArxivPaper:
     arxiv_id: str
     title: str
     pdf_url: str
+
+
+class ArxivClientError(RuntimeError):
+    pass
 
 
 def _text(node: ET.Element | None) -> str:
@@ -66,10 +71,16 @@ def search_arxiv(
     url = f"{ARXIV_API_URL}?{urlencode(params)}"
     request = Request(url, headers={"User-Agent": DEFAULT_USER_AGENT})
 
-    with urlopen(request, timeout=timeout) as response:
-        payload = response.read()
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            payload = response.read()
+    except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        raise ArxivClientError(f"Failed to query arXiv API: {exc}") from exc
 
-    root = ET.fromstring(payload)
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as exc:
+        raise ArxivClientError("Invalid XML response from arXiv API") from exc
     ns = {"atom": "http://www.w3.org/2005/Atom"}
 
     papers: list[ArxivPaper] = []
@@ -80,19 +91,33 @@ def search_arxiv(
         if not title:
             continue
 
-        pdf_url = _extract_pdf_url(entry, arxiv_id, ns)
+        try:
+            pdf_url = _extract_pdf_url(entry, arxiv_id, ns)
+        except ValueError as exc:
+            raise ArxivClientError(f"Invalid entry for arXiv id {arxiv_id or raw_id}") from exc
         papers.append(ArxivPaper(arxiv_id=arxiv_id, title=title, pdf_url=pdf_url))
 
     return papers
 
 
-def download_pdf(pdf_url: str, target_path: str, timeout: int = 60) -> None:
+def download_pdf(pdf_url: str, target_path: Path, timeout: int = 60, chunk_size: int = 64 * 1024) -> None:
     request = Request(pdf_url, headers={"User-Agent": DEFAULT_USER_AGENT})
-    with urlopen(request, timeout=timeout) as response:
-        data = response.read()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not data.startswith(b"%PDF"):
-        raise ValueError("Downloaded content is not a PDF")
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            first_chunk = response.read(1024)
+            if not first_chunk.startswith(b"%PDF"):
+                raise ArxivClientError("Downloaded content is not a PDF")
 
-    with open(target_path, "wb") as file_obj:
-        file_obj.write(data)
+            with target_path.open("wb") as file_obj:
+                file_obj.write(first_chunk)
+                for chunk in iter(lambda: response.read(chunk_size), b""):
+                    file_obj.write(chunk)
+    except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        try:
+            if target_path.exists():
+                target_path.unlink()
+        except OSError:
+            pass
+        raise ArxivClientError(f"Failed to download PDF from {pdf_url}: {exc}") from exc

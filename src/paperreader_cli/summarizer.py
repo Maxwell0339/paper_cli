@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
 from .llm_client import LLMClient
@@ -103,7 +103,7 @@ def summarize_paper(
                 executor.submit(_summarize_one, idx, chunk)
                 for idx, chunk in enumerate(chunks, start=1)
             ]
-            for future in futures:
+            for future in as_completed(futures):
                 resolved_idx, partial_content, partial_total_tokens = future.result()
                 partials[resolved_idx - 1] = partial_content
                 partial_tokens[resolved_idx - 1] = partial_total_tokens

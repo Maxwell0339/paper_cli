@@ -6,7 +6,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from .cache import CacheEntry, SummaryCache, build_summary_cache_key, file_sha256
+from .cache import CacheEntry, SummaryCache, build_summary_cache_key
 from .config import AppConfig
 from .llm_client import LLMClient, LLMClientError
 from .pdf_loader import PDFLoader
@@ -65,11 +65,10 @@ def run_scan(folder: Path, config: AppConfig, console: Console, summary_output_d
     total_tokens = 0
 
     def _process_one(pdf: Path) -> _FileProcessResult:
-        loader = PDFLoader(max_chars=config.max_chars)
-        text, truncated = loader.load_text(pdf)
+        cache_key: str | None = None
 
         if cache is not None:
-            pdf_hash = file_sha256(pdf)
+            pdf_hash = cache.resolve_file_hash(pdf)
             cache_key = build_summary_cache_key(
                 pdf_hash=pdf_hash,
                 model=config.model,
@@ -90,6 +89,9 @@ def run_scan(folder: Path, config: AppConfig, console: Console, summary_output_d
                     from_cache=True,
                 )
 
+        loader = PDFLoader(max_chars=config.max_chars)
+        text, truncated = loader.load_text(pdf)
+
         summary = summarize_paper(
             llm,
             system_prompt=config.system_prompt,
@@ -100,7 +102,7 @@ def run_scan(folder: Path, config: AppConfig, console: Console, summary_output_d
         )
         output_path = write_markdown_for_pdf(pdf, summary.content, summary_output_dir)
 
-        if cache is not None:
+        if cache is not None and cache_key is not None:
             cache.set(
                 cache_key,
                 CacheEntry(
