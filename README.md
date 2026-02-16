@@ -56,6 +56,20 @@ provider 预设（首次向导自动带出默认值）：
 paperreader scan ./papers
 ```
 
+按关键词从 ArXiv 抓取论文 PDF（默认保存到 `~/.paper_cli/papers`）：
+
+```bash
+paperreader crawl --query "visual slam" --max-results 20
+```
+
+自定义保存目录：
+
+```bash
+paperreader crawl --query "vins mono" --output-dir ./papers
+```
+
+未传 `--query` 时会回退到上次 crawl 使用的关键词；若历史关键词为空则报错。
+
 可选覆盖参数：
 
 ```bash
@@ -85,6 +99,7 @@ paperreader scan --help
 - 控制台展示 Rich 进度与简报（不展示 LLM 摘要正文）
 - 批处理结束后输出本次总 token 消耗（`total_tokens`，若响应无 usage 则按 0 计入）
 - 在 PDF 同级目录写入同名 `.md` 文件（默认覆盖）
+- `crawl` 会输出 `fetched/saved/skipped/failed` 统计；当目标目录同名 PDF 已存在时会跳过，且不计入 `saved`
 
 ## 错误处理
 

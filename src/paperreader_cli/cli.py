@@ -13,8 +13,11 @@ from .config import (
     SUPPORTED_PROVIDERS,
     load_config,
     provider_preset,
+    read_config_values,
+    update_config_values,
     write_config,
 )
+from .crawler.service import prepare_output_dir, resolve_query, run_crawl
 
 app = typer.Typer(
     help="PaperReader-CLI: batch read and summarize PDFs.",
@@ -125,6 +128,57 @@ def reconfigure(
     except Exception as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@app.command("crawl")
+def crawl(
+    query: str | None = typer.Option(None, "--query", "-q", help="ArXiv search query; fallback to last used query if omitted."),
+    max_results: int = typer.Option(10, "--max-results", "-n", min=1, help="Max number of papers to fetch from ArXiv."),
+    output_dir: str | None = typer.Option(None, "--output-dir", help="Override PDF output directory; default is ~/.paper_cli/papers."),
+    config: Path | None = typer.Option(None, "--config", help="Optional custom config path; default is ~/.paper_cli/config.yaml."),
+) -> None:
+    """Fetch papers from ArXiv by keyword and save PDFs."""
+    try:
+        target_config_path = config or DEFAULT_SYSTEM_CONFIG_PATH
+        values = read_config_values(target_config_path)
+
+        final_query = resolve_query(query, str(values.get("last_crawl_query") or ""))
+        final_output_dir = prepare_output_dir(output_dir, str(values.get("default_crawl_output_dir") or ""))
+
+        console.print(
+            f"[cyan]Crawling ArXiv[/cyan] query='{final_query}', max_results={max_results}, output='{final_output_dir}'"
+        )
+
+        def _progress(status: str, _paper: object, path: Path) -> None:
+            if status == "saved":
+                console.print(f"[green]saved[/green] {path.name}")
+            elif status == "skip":
+                console.print(f"[yellow]skipped[/yellow] {path.name}")
+            else:
+                console.print(f"[red]failed[/red] {path.name}")
+
+        report = run_crawl(
+            query=final_query,
+            max_results=max_results,
+            output_dir=final_output_dir,
+            on_progress=_progress,
+        )
+
+        update_config_values(
+            target_config_path,
+            {
+                "last_crawl_query": final_query,
+                "default_crawl_output_dir": str(final_output_dir),
+            },
+        )
+    except Exception as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        "[bold green]Crawl done.[/bold green] "
+        f"fetched={report.fetched}, saved={report.saved}, skipped={report.skipped}, failed={report.failed}"
+    )
 
 
 if __name__ == "__main__":
