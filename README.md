@@ -27,6 +27,13 @@ pip install -e .
 - `system_prompt`: 学术人设
 - `max_chars`: 单篇论文最大输入长度（超出将截断并提示）
 - `chunk_chars`: 长文本分块大小（分块总结再汇总）
+- `file_workers`: 文件级并发数（同时处理多少篇 PDF）
+- `chunk_workers`: 单篇长文的分块并发数
+- `request_timeout`: 单次 LLM 请求超时（秒）
+- `max_retries`: LLM 瞬时错误重试次数（指数退避）
+- `rate_limit_qps`: 客户端侧每秒请求上限（避免突发限流）
+- `cache_enabled`: 是否启用摘要缓存（PDF 哈希 + 配置指纹）
+- `profile`: 摘要档位（`paper` / `report`）
 - `default_scan_folder`: 论文目录默认路径（`scan` 默认扫描目录、`crawl` 默认保存目录；默认 `~/.paper_cli/papers`）
 - `default_summary_output_dir`: `scan` 默认总结输出目录（默认 `~/.paper_cli/summary`）
 
@@ -74,6 +81,12 @@ paperreader scan --output-dir ./summary
 
 ```bash
 paperreader scan ./papers --model deepseek-chat --base-url https://your-gateway/v1
+```
+
+性能相关覆盖参数示例：
+
+```bash
+paperreader scan ./papers --file-workers 5 --chunk-workers 10 --cache --rate-limit-qps 2.0 --profile paper
 ```
 
 也可临时指定其它配置文件：

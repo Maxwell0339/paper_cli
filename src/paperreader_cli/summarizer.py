@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from .llm_client import LLMClient
@@ -8,8 +9,8 @@ from .llm_client import LLMClient
 SUMMARY_INSTRUCTION = """
 请阅读论文内容并输出结构化 Markdown，总结必须包含以下小节：
 1. 论文标题识别
-2. 核心贡献
-3. 方法论（给出关键的推导公式）
+2. 核心贡献（需要指出文章的背景，解决了什么问题）
+3. 方法论（包括模型架构、算法流程、创新点等）
 4. 实验结论（数据集、指标、对比结果亮点）
 5. 个人评价（优点、局限、可改进方向）
 要求：
@@ -63,9 +64,13 @@ def summarize_paper(
     system_prompt: str,
     paper_text: str,
     chunk_chars: int,
+    chunk_workers: int = 3,
+    profile: str = "paper",
 ) -> SummaryResult:
     chunks = chunk_text(paper_text, chunk_chars)
     total_tokens = 0
+    profile_name = profile if profile in {"paper", "report"} else "paper"
+    max_merge_chars = 60000 if profile_name == "paper" else 36000
 
     if len(chunks) == 1:
         user_prompt = f"{SUMMARY_INSTRUCTION}\n\n论文内容：\n{chunks[0]}"
@@ -73,8 +78,10 @@ def summarize_paper(
         total_tokens += summary.total_tokens
         return SummaryResult(content=summary.content, chunks_used=1, total_tokens=total_tokens)
 
-    partials: list[str] = []
-    for idx, chunk in enumerate(chunks, start=1):
+    partials: list[str] = [""] * len(chunks)
+    partial_tokens: list[int] = [0] * len(chunks)
+
+    def _summarize_one(idx: int, chunk: str) -> tuple[int, str, int]:
         chunk_prompt = (
             f"你将阅读论文的一部分（第 {idx}/{len(chunks)} 部分）。"
             "请仅输出该部分的关键信息要点（Markdown 列表），"
@@ -82,15 +89,41 @@ def summarize_paper(
             f"\n\n论文片段：\n{chunk}"
         )
         partial = llm.chat(system_prompt=system_prompt, user_prompt=chunk_prompt)
-        total_tokens += partial.total_tokens
-        partials.append(partial.content)
+        return idx, partial.content, partial.total_tokens
+
+    if chunk_workers <= 1:
+        for idx, chunk in enumerate(chunks, start=1):
+            resolved_idx, partial_content, partial_total_tokens = _summarize_one(idx, chunk)
+            partials[resolved_idx - 1] = partial_content
+            partial_tokens[resolved_idx - 1] = partial_total_tokens
+    else:
+        max_workers = min(max(1, int(chunk_workers)), len(chunks))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(_summarize_one, idx, chunk)
+                for idx, chunk in enumerate(chunks, start=1)
+            ]
+            for future in futures:
+                resolved_idx, partial_content, partial_total_tokens = future.result()
+                partials[resolved_idx - 1] = partial_content
+                partial_tokens[resolved_idx - 1] = partial_total_tokens
+
+    total_tokens += sum(partial_tokens)
+
+    merged_sections: list[str] = []
+    merged_chars = 0
+    for i, part in enumerate(partials, start=1):
+        section = f"### 片段 {i}\n{part}".strip()
+        next_len = len(section) + 2
+        if merged_sections and merged_chars + next_len > max_merge_chars:
+            break
+        merged_sections.append(section)
+        merged_chars += next_len
 
     merge_prompt = (
         f"{SUMMARY_INSTRUCTION}\n\n"
         "以下是同一篇论文各片段的要点，请进行全局整合，输出最终结构化 Markdown：\n\n"
-        + "\n\n".join(
-            f"### 片段 {i}\n{part}" for i, part in enumerate(partials, start=1)
-        )
+        + "\n\n".join(merged_sections)
     )
     final_summary = llm.chat(system_prompt=system_prompt, user_prompt=merge_prompt)
     total_tokens += final_summary.total_tokens

@@ -67,6 +67,13 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
     "max_chars": 120000,
     "chunk_chars": 12000,
     "recursive": True,
+    "file_workers": 5,
+    "chunk_workers": 10,
+    "request_timeout": 120,
+    "max_retries": 3,
+    "rate_limit_qps": 1.5,
+    "cache_enabled": True,
+    "profile": "paper",
     "last_crawl_query": "",
     "default_crawl_output_dir": str(DEFAULT_CRAWL_OUTPUT_DIR),
     "default_scan_folder": str(DEFAULT_SCAN_FOLDER),
@@ -85,6 +92,13 @@ class AppConfig:
     max_chars: int = 120000
     chunk_chars: int = 12000
     recursive: bool = True
+    file_workers: int = 5
+    chunk_workers: int = 10
+    request_timeout: int = 120
+    max_retries: int = 3
+    rate_limit_qps: float = 1.5
+    cache_enabled: bool = True
+    profile: str = "paper"
     last_crawl_query: str = ""
     default_crawl_output_dir: str = str(DEFAULT_CRAWL_OUTPUT_DIR)
     default_scan_folder: str = str(DEFAULT_SCAN_FOLDER)
@@ -147,6 +161,13 @@ def load_config(
     cli_max_chars: int | None = None,
     cli_chunk_chars: int | None = None,
     cli_recursive: bool | None = None,
+    cli_file_workers: int | None = None,
+    cli_chunk_workers: int | None = None,
+    cli_request_timeout: int | None = None,
+    cli_max_retries: int | None = None,
+    cli_rate_limit_qps: float | None = None,
+    cli_cache_enabled: bool | None = None,
+    cli_profile: str | None = None,
 ) -> AppConfig:
     config_path = config_path or DEFAULT_SYSTEM_CONFIG_PATH
     raw = read_config_values(config_path)
@@ -183,6 +204,15 @@ def load_config(
     max_chars = cli_max_chars if cli_max_chars is not None else int(raw.get("max_chars", 120000))
     chunk_chars = cli_chunk_chars if cli_chunk_chars is not None else int(raw.get("chunk_chars", 12000))
     recursive = cli_recursive if cli_recursive is not None else bool(raw.get("recursive", True))
+    file_workers = cli_file_workers if cli_file_workers is not None else int(raw.get("file_workers", 3))
+    chunk_workers = cli_chunk_workers if cli_chunk_workers is not None else int(raw.get("chunk_workers", 3))
+    request_timeout = cli_request_timeout if cli_request_timeout is not None else int(raw.get("request_timeout", 120))
+    max_retries = cli_max_retries if cli_max_retries is not None else int(raw.get("max_retries", 3))
+    rate_limit_qps = cli_rate_limit_qps if cli_rate_limit_qps is not None else float(raw.get("rate_limit_qps", 1.5))
+    cache_enabled = cli_cache_enabled if cli_cache_enabled is not None else bool(raw.get("cache_enabled", True))
+    profile = (cli_profile or str(raw.get("profile", "paper"))).strip().lower()
+    if profile not in {"paper", "report"}:
+        profile = "paper"
     last_crawl_query = str(raw.get("last_crawl_query") or "").strip()
     default_crawl_output_dir = str(raw.get("default_crawl_output_dir") or str(DEFAULT_CRAWL_OUTPUT_DIR)).strip()
     default_scan_folder = str(raw.get("default_scan_folder") or str(DEFAULT_SCAN_FOLDER)).strip()
@@ -198,6 +228,13 @@ def load_config(
         max_chars=max(2000, int(max_chars)),
         chunk_chars=max(1000, int(chunk_chars)),
         recursive=bool(recursive),
+        file_workers=max(1, int(file_workers)),
+        chunk_workers=max(1, int(chunk_workers)),
+        request_timeout=max(10, int(request_timeout)),
+        max_retries=max(0, int(max_retries)),
+        rate_limit_qps=max(0.1, float(rate_limit_qps)),
+        cache_enabled=bool(cache_enabled),
+        profile=profile,
         last_crawl_query=last_crawl_query,
         default_crawl_output_dir=default_crawl_output_dir,
         default_scan_folder=default_scan_folder,

@@ -14,11 +14,13 @@ def render_summary_saved(
     output_path: Path,
     chunks_used: int,
     truncated: bool,
+    from_cache: bool = False,
 ) -> None:
     trunc_note = " [yellow](truncated input)[/yellow]" if truncated else ""
+    cache_note = " [cyan](cache hit)[/cyan]" if from_cache else ""
     console.print(
         Panel.fit(
-            f"[bold]{pdf_name}[/bold]{trunc_note}\n"
+            f"[bold]{pdf_name}[/bold]{trunc_note}{cache_note}\n"
             f"Chunks used: {chunks_used}\n"
             f"Output: {output_path}",
             title="Summary Saved",
