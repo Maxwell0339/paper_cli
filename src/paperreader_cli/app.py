@@ -8,7 +8,7 @@ from rich.console import Console
 from .config import AppConfig
 from .llm_client import LLMClient, LLMClientError
 from .pdf_loader import PDFLoader
-from .renderer import render_brief_markdown, render_summary_saved
+from .renderer import render_summary_saved
 from .scanner import find_pdfs
 from .summarizer import summarize_paper
 from .writer import write_markdown_next_to_pdf
@@ -19,13 +19,14 @@ class ProcessReport:
     total: int
     success: int
     failed: int
+    total_tokens: int
 
 
 def run_scan(folder: Path, config: AppConfig, console: Console) -> ProcessReport:
     pdfs = find_pdfs(folder, recursive=config.recursive)
     if not pdfs:
         console.print(f"[yellow]No PDF files found in {folder}[/yellow]")
-        return ProcessReport(total=0, success=0, failed=0)
+        return ProcessReport(total=0, success=0, failed=0, total_tokens=0)
 
     if not config.api_key:
         raise ValueError("API key is empty. Set it in config.yaml, env, or CLI option.")
@@ -35,6 +36,7 @@ def run_scan(folder: Path, config: AppConfig, console: Console) -> ProcessReport
 
     success = 0
     failed = 0
+    total_tokens = 0
 
     for pdf in pdfs:
         with console.status(f"[bold cyan]Processing[/bold cyan] {pdf.name} ...", spinner="dots"):
@@ -53,6 +55,7 @@ def run_scan(folder: Path, config: AppConfig, console: Console) -> ProcessReport
                 continue
 
         success += 1
+        total_tokens += summary.total_tokens
         render_summary_saved(
             console,
             pdf_name=pdf.name,
@@ -60,6 +63,5 @@ def run_scan(folder: Path, config: AppConfig, console: Console) -> ProcessReport
             chunks_used=summary.chunks_used,
             truncated=truncated,
         )
-        render_brief_markdown(console, summary.content)
 
-    return ProcessReport(total=len(pdfs), success=success, failed=failed)
+    return ProcessReport(total=len(pdfs), success=success, failed=failed, total_tokens=total_tokens)

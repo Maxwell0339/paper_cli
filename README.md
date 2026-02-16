@@ -82,7 +82,8 @@ paperreader scan --help
 
 ## 输出
 
-- 控制台展示 Rich 进度与简报
+- 控制台展示 Rich 进度与简报（不展示 LLM 摘要正文）
+- 批处理结束后输出本次总 token 消耗（`total_tokens`，若响应无 usage 则按 0 计入）
 - 在 PDF 同级目录写入同名 `.md` 文件（默认覆盖）
 
 ## 错误处理

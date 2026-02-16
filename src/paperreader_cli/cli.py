@@ -110,7 +110,7 @@ def scan(
         raise typer.Exit(code=1) from exc
 
     console.print(
-        f"[bold green]Done.[/bold green] total={report.total}, success={report.success}, failed={report.failed}"
+        f"[bold green]Done.[/bold green] total={report.total}, success={report.success}, failed={report.failed}, total_tokens={report.total_tokens}"
     )
 
 
