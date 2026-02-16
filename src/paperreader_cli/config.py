@@ -67,8 +67,8 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
     "max_chars": 120000,
     "chunk_chars": 12000,
     "recursive": True,
-    "file_workers": 3,
-    "chunk_workers": 3,
+    "file_workers": 5,
+    "chunk_workers": 10,
     "request_timeout": 120,
     "max_retries": 3,
     "rate_limit_qps": 1.5,
@@ -92,8 +92,8 @@ class AppConfig:
     max_chars: int = 120000
     chunk_chars: int = 12000
     recursive: bool = True
-    file_workers: int = 3
-    chunk_workers: int = 3
+    file_workers: int = 5
+    chunk_workers: int = 10
     request_timeout: int = 120
     max_retries: int = 3
     rate_limit_qps: float = 1.5
