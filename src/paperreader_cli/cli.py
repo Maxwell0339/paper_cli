@@ -7,14 +7,19 @@ from rich.console import Console
 
 from .app import run_scan
 from .config import (
+    DEFAULT_SCAN_FOLDER,
+    DEFAULT_SUMMARY_OUTPUT_DIR,
     DEFAULT_CONFIG_VALUES,
     DEFAULT_SYSTEM_CONFIG_PATH,
     PROVIDER_OTHERS,
     SUPPORTED_PROVIDERS,
     load_config,
     provider_preset,
+    read_config_values,
+    update_config_values,
     write_config,
 )
+from .crawler.service import prepare_output_dir, resolve_query, run_crawl
 
 app = typer.Typer(
     help="PaperReader-CLI: batch read and summarize PDFs.",
@@ -60,6 +65,8 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
     max_chars = typer.prompt("max_chars", default=int(DEFAULT_CONFIG_VALUES["max_chars"]), type=int)
     chunk_chars = typer.prompt("chunk_chars", default=int(DEFAULT_CONFIG_VALUES["chunk_chars"]), type=int)
     recursive = typer.confirm("recursive scan?", default=bool(DEFAULT_CONFIG_VALUES["recursive"]))
+    default_scan_folder = typer.prompt("default_scan_folder", default=str(DEFAULT_SCAN_FOLDER))
+    default_summary_output_dir = typer.prompt("default_summary_output_dir", default=str(DEFAULT_SUMMARY_OUTPUT_DIR))
 
     values = {
         "provider": provider,
@@ -71,6 +78,8 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
         "max_chars": max_chars,
         "chunk_chars": chunk_chars,
         "recursive": recursive,
+        "default_scan_folder": default_scan_folder,
+        "default_summary_output_dir": default_summary_output_dir,
     }
     write_config(config_path, values)
     console.print("[green]Config saved.[/green]")
@@ -78,7 +87,8 @@ def _bootstrap_config_interactive(config_path: Path) -> None:
 
 @app.command()
 def scan(
-    folder_path: Path = typer.Argument(..., exists=True, file_okay=False, resolve_path=True),
+    folder_path: Path | None = typer.Argument(None, exists=False, file_okay=False, resolve_path=True),
+    output_dir: Path | None = typer.Option(None, "--output-dir", help="Summary markdown output directory; default is ~/.paper_cli/summary."),
     config: Path | None = typer.Option(None, "--config", help="Optional custom config path; default is ~/.paper_cli/config.yaml."),
     model: str | None = typer.Option(None, "--model", help="Override model."),
     base_url: str | None = typer.Option(None, "--base-url", help="Override API base_url."),
@@ -104,7 +114,18 @@ def scan(
             cli_chunk_chars=chunk_chars,
             cli_recursive=recursive,
         )
-        report = run_scan(folder=folder_path, config=app_config, console=console)
+        final_folder = (folder_path or Path(app_config.default_scan_folder)).expanduser().resolve()
+        final_output_dir = (output_dir or Path(app_config.default_summary_output_dir)).expanduser().resolve()
+
+        if not final_folder.exists() or not final_folder.is_dir():
+            raise NotADirectoryError(f"Invalid folder: {final_folder}")
+
+        report = run_scan(
+            folder=final_folder,
+            config=app_config,
+            console=console,
+            summary_output_dir=final_output_dir,
+        )
     except Exception as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(code=1) from exc
@@ -125,6 +146,63 @@ def reconfigure(
     except Exception as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@app.command("crawl")
+def crawl(
+    query: str | None = typer.Option(None, "--query", "-q", help="ArXiv search query; fallback to last used query if omitted."),
+    max_results: int = typer.Option(10, "--max-results", "-n", min=1, help="Max number of papers to fetch from ArXiv."),
+    output_dir: str | None = typer.Option(None, "--output-dir", help="Override PDF output directory; default follows default_scan_folder (~/.paper_cli/papers)."),
+    config: Path | None = typer.Option(None, "--config", help="Optional custom config path; default is ~/.paper_cli/config.yaml."),
+) -> None:
+    """Fetch papers from ArXiv by keyword and save PDFs."""
+    try:
+        target_config_path = config or DEFAULT_SYSTEM_CONFIG_PATH
+        values = read_config_values(target_config_path)
+
+        final_query = resolve_query(query, str(values.get("last_crawl_query") or ""))
+        configured_papers_dir = str(
+            values.get("default_scan_folder")
+            or values.get("default_crawl_output_dir")
+            or ""
+        )
+        final_output_dir = prepare_output_dir(output_dir, configured_papers_dir)
+
+        console.print(
+            f"[cyan]Crawling ArXiv[/cyan] query='{final_query}', max_results={max_results}, output='{final_output_dir}'"
+        )
+
+        def _progress(status: str, _paper: object, path: Path) -> None:
+            if status == "saved":
+                console.print(f"[green]saved[/green] {path.name}")
+            elif status == "skip":
+                console.print(f"[yellow]skipped[/yellow] {path.name}")
+            else:
+                console.print(f"[red]failed[/red] {path.name}")
+
+        report = run_crawl(
+            query=final_query,
+            max_results=max_results,
+            output_dir=final_output_dir,
+            on_progress=_progress,
+        )
+
+        update_config_values(
+            target_config_path,
+            {
+                "last_crawl_query": final_query,
+                "default_scan_folder": str(final_output_dir),
+                "default_crawl_output_dir": str(final_output_dir),
+            },
+        )
+    except Exception as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        "[bold green]Crawl done.[/bold green] "
+        f"fetched={report.fetched}, saved={report.saved}, skipped={report.skipped}, failed={report.failed}"
+    )
 
 
 if __name__ == "__main__":

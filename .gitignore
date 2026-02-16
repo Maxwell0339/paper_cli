@@ -1,3 +1,4 @@
 .vscode/
 src/paperreader_cli/__pycache__/
+src/paperreader_cli/crawler/__pycache__/
 papers/

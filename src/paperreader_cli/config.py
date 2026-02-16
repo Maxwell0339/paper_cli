@@ -11,6 +11,9 @@ import yaml
 CONFIG_DIR_NAME = ".paper_cli"
 CONFIG_FILE_NAME = "config.yaml"
 DEFAULT_SYSTEM_CONFIG_PATH = Path.home() / CONFIG_DIR_NAME / CONFIG_FILE_NAME
+DEFAULT_CRAWL_OUTPUT_DIR = Path.home() / CONFIG_DIR_NAME / "papers"
+DEFAULT_SCAN_FOLDER = Path.home() / CONFIG_DIR_NAME / "papers"
+DEFAULT_SUMMARY_OUTPUT_DIR = Path.home() / CONFIG_DIR_NAME / "summary"
 
 PROVIDER_OPENAI = "openai"
 PROVIDER_CLAUDE = "claude"
@@ -64,6 +67,10 @@ DEFAULT_CONFIG_VALUES: dict[str, Any] = {
     "max_chars": 120000,
     "chunk_chars": 12000,
     "recursive": True,
+    "last_crawl_query": "",
+    "default_crawl_output_dir": str(DEFAULT_CRAWL_OUTPUT_DIR),
+    "default_scan_folder": str(DEFAULT_SCAN_FOLDER),
+    "default_summary_output_dir": str(DEFAULT_SUMMARY_OUTPUT_DIR),
 }
 
 
@@ -78,6 +85,10 @@ class AppConfig:
     max_chars: int = 120000
     chunk_chars: int = 12000
     recursive: bool = True
+    last_crawl_query: str = ""
+    default_crawl_output_dir: str = str(DEFAULT_CRAWL_OUTPUT_DIR)
+    default_scan_folder: str = str(DEFAULT_SCAN_FOLDER)
+    default_summary_output_dir: str = str(DEFAULT_SUMMARY_OUTPUT_DIR)
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -93,12 +104,29 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def read_config_values(config_path: Path) -> dict[str, Any]:
+    if not config_path.exists():
+        return dict(DEFAULT_CONFIG_VALUES)
+
+    raw = _read_yaml(config_path)
+    merged = dict(DEFAULT_CONFIG_VALUES)
+    merged.update(raw)
+    return merged
+
+
 def write_config(config_path: Path, values: dict[str, Any]) -> None:
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(
         yaml.safe_dump(values, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
     )
+
+
+def update_config_values(config_path: Path, updates: dict[str, Any]) -> dict[str, Any]:
+    current = read_config_values(config_path)
+    current.update(updates)
+    write_config(config_path, current)
+    return current
 
 
 def provider_preset(provider: str) -> dict[str, str]:
@@ -121,7 +149,7 @@ def load_config(
     cli_recursive: bool | None = None,
 ) -> AppConfig:
     config_path = config_path or DEFAULT_SYSTEM_CONFIG_PATH
-    raw = _read_yaml(config_path)
+    raw = read_config_values(config_path)
 
     provider = str(raw.get("provider") or DEFAULT_CONFIG_VALUES["provider"]).strip().lower()
     if provider == "third_party":
@@ -155,6 +183,10 @@ def load_config(
     max_chars = cli_max_chars if cli_max_chars is not None else int(raw.get("max_chars", 120000))
     chunk_chars = cli_chunk_chars if cli_chunk_chars is not None else int(raw.get("chunk_chars", 12000))
     recursive = cli_recursive if cli_recursive is not None else bool(raw.get("recursive", True))
+    last_crawl_query = str(raw.get("last_crawl_query") or "").strip()
+    default_crawl_output_dir = str(raw.get("default_crawl_output_dir") or str(DEFAULT_CRAWL_OUTPUT_DIR)).strip()
+    default_scan_folder = str(raw.get("default_scan_folder") or str(DEFAULT_SCAN_FOLDER)).strip()
+    default_summary_output_dir = str(raw.get("default_summary_output_dir") or str(DEFAULT_SUMMARY_OUTPUT_DIR)).strip()
 
     return AppConfig(
         provider=provider,
@@ -166,4 +198,8 @@ def load_config(
         max_chars=max(2000, int(max_chars)),
         chunk_chars=max(1000, int(chunk_chars)),
         recursive=bool(recursive),
+        last_crawl_query=last_crawl_query,
+        default_crawl_output_dir=default_crawl_output_dir,
+        default_scan_folder=default_scan_folder,
+        default_summary_output_dir=default_summary_output_dir,
     )
