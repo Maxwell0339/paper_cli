@@ -1,6 +1,6 @@
 # PaperReader-CLI
 
-个人使用AI编程的一个本地终端工具：递归扫描 PDF，调用LLM进行学术总结，并输出 Markdown。支持多 provider 配置（OpenAI、Claude、Gemini、DeepSeek、others）。
+个人使用AI编程的一个本地终端工具：递归扫描 PDF，调用LLM进行学术总结，并输出 Markdown。支持多 provider 配置（OpenAI、Claude、Gemini、DeepSeek、others）。 支持爬取 ArXiv 论文 PDF。
 
 ## 安装
 
