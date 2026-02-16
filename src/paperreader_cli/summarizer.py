@@ -23,6 +23,7 @@ SUMMARY_INSTRUCTION = """
 class SummaryResult:
     content: str
     chunks_used: int
+    total_tokens: int
 
 
 def chunk_text(text: str, chunk_chars: int) -> list[str]:
@@ -64,11 +65,13 @@ def summarize_paper(
     chunk_chars: int,
 ) -> SummaryResult:
     chunks = chunk_text(paper_text, chunk_chars)
+    total_tokens = 0
 
     if len(chunks) == 1:
         user_prompt = f"{SUMMARY_INSTRUCTION}\n\n论文内容：\n{chunks[0]}"
         summary = llm.chat(system_prompt=system_prompt, user_prompt=user_prompt)
-        return SummaryResult(content=summary, chunks_used=1)
+        total_tokens += summary.total_tokens
+        return SummaryResult(content=summary.content, chunks_used=1, total_tokens=total_tokens)
 
     partials: list[str] = []
     for idx, chunk in enumerate(chunks, start=1):
@@ -78,7 +81,9 @@ def summarize_paper(
             "用于后续全局汇总，不要捏造缺失内容。"
             f"\n\n论文片段：\n{chunk}"
         )
-        partials.append(llm.chat(system_prompt=system_prompt, user_prompt=chunk_prompt))
+        partial = llm.chat(system_prompt=system_prompt, user_prompt=chunk_prompt)
+        total_tokens += partial.total_tokens
+        partials.append(partial.content)
 
     merge_prompt = (
         f"{SUMMARY_INSTRUCTION}\n\n"
@@ -88,4 +93,5 @@ def summarize_paper(
         )
     )
     final_summary = llm.chat(system_prompt=system_prompt, user_prompt=merge_prompt)
-    return SummaryResult(content=final_summary, chunks_used=len(chunks))
+    total_tokens += final_summary.total_tokens
+    return SummaryResult(content=final_summary.content, chunks_used=len(chunks), total_tokens=total_tokens)
