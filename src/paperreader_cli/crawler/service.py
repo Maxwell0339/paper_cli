@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .arxiv_client import ArxivPaper, download_pdf, search_arxiv
+from .arxiv_client import ArxivClientError, ArxivPaper, download_pdf, search_arxiv
 from .storage import normalize_title_to_filename, resolve_output_dir
 
 
@@ -48,11 +48,11 @@ def run_crawl(
             continue
 
         try:
-            download_pdf(paper.pdf_url, str(target_path))
+            download_pdf(paper.pdf_url, target_path)
             report.saved += 1
             if on_progress:
                 on_progress("saved", paper, target_path)
-        except Exception:
+        except (ArxivClientError, OSError, ValueError):
             report.failed += 1
             if on_progress:
                 on_progress("failed", paper, target_path)
